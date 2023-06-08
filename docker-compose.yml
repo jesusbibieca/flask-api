@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+  db:
+    image: cockroachdb/cockroach:v22.2.9
+    expose:
+      - "26257"
+      - "8080"
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    command: start-single-node --insecure
+    volumes:
+      - "${PWD}/cockroach-data/crdb:/cockroach/cockroach-data"
+    healthcheck:
+      test: ["CMD", "curl", "http://db:8080"]
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: .
+      target: builder
+    stop_signal: SIGINT
+    restart: always
+    environment:
+      - FLASK_ENV=${FLASK_ENV}
+    ports:
+      - 8000:8000
+    links:
+      - db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
